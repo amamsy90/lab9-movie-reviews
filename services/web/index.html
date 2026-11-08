@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}}</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #172c36; background: #f1f5f5; }
+    body { max-width: 760px; margin: 3rem auto; padding: 0 1.25rem; }
+    h1 { font-size: clamp(2rem, 7vw, 3rem); margin-bottom: .5rem; }
+    .eyebrow { text-transform: uppercase; letter-spacing: .13em; font-size: .75rem; color: #466e70; }
+    .intro { line-height: 1.6; color: #49606a; }
+    form, article { background: white; border: 1px solid #d4e0e2; border-radius: 12px; padding: 1.25rem; margin: 1rem 0; }
+    label { display: block; font-weight: 650; margin-bottom: .5rem; }
+    textarea { box-sizing: border-box; width: 100%; min-height: 110px; padding: .8rem; font: inherit; border: 1px solid #94abad; border-radius: 6px; }
+    button { margin-top: .8rem; border: 0; border-radius: 6px; background: #14615c; color: white; padding: .75rem 1rem; font: inherit; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: wait; }
+    button:focus-visible, textarea:focus-visible { outline: 3px solid #dfad43; outline-offset: 3px; }
+    #message { min-height: 1.5rem; }
+    .meta { color: #49606a; font-size: .8rem; overflow-wrap: anywhere; }
+    .request { white-space: pre-wrap; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <p class="eyebrow">Lab 9 · AI Service Relay</p>
+  <h1>{{title}}</h1>
+  <p class="intro">{{goal}} {{input_guidance}} Use fictional examples only: history is shared with everyone.</p>
+  <form id="request-form">
+    <label for="text">{{input_label}}</label>
+    <textarea id="text" maxlength="1000" required placeholder="{{placeholder}}"></textarea>
+    <button id="submit">Classify and save</button>
+    <p id="message" role="status" aria-live="polite"></p>
+  </form>
+  <h2>{{history_title}}</h2>
+  <p class="meta">Categories are model suggestions and may be wrong. The model uses a small synthetic training set.</p>
+  <div id="history" aria-live="polite"></div>
+  <script>
+    const message = document.querySelector('#message');
+    const button = document.querySelector('#submit');
+    async function api(path, options) {
+      const response = await fetch(path, options);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Request failed.');
+      return data;
+    }
+    async function history() {
+      const tickets = await api('/api/tickets');
+      const container = document.querySelector('#history');
+      container.replaceChildren();
+      if (!tickets.length) container.textContent = 'No entries yet. Try the form above.';
+      for (const ticket of tickets) {
+        const article = document.createElement('article');
+        const heading = document.createElement('strong');
+        heading.textContent = `Suggested category: ${ticket.category}`;
+        const text = document.createElement('p');
+        text.className = 'request';
+        text.textContent = ticket.text;
+        const meta = document.createElement('p');
+        meta.className = 'meta';
+        meta.textContent = `#${ticket.id} · ${ticket.created_at} · ${ticket.model_version}`;
+        article.append(heading, text, meta);
+        container.append(article);
+      }
+    }
+    document.querySelector('#request-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      button.disabled = true;
+      message.textContent = 'Classifying and saving…';
+      try {
+        const ticket = await api('/api/tickets', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({text: document.querySelector('#text').value})
+        });
+        message.textContent = `Saved #${ticket.id}. Suggested category: ${ticket.category}.`;
+        document.querySelector('#text').value = '';
+        await history();
+      } catch (error) { message.textContent = error.message; }
+      finally { button.disabled = false; }
+    });
+    history().catch(error => { document.querySelector('#history').textContent = error.message; });
+  </script>
+</body>
+</html>

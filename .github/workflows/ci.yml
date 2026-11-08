@@ -1,0 +1,35 @@
+name: Lab 9 CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      POSTGRES_PASSWORD: ci-only-disposable-password
+      COMPOSE_PROJECT_NAME: lab09-ci
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -v
+      - run: docker compose up -d --build --wait
+      - name: PostgreSQL migration and API regressions
+        run: docker compose run --rm -v "$PWD:/app:ro" -e TEST_DATABASE=1 data python -m unittest discover -s tests -p test_database.py -v
+      - run: python tools/smoke.py --url http://127.0.0.1:8080 --record-file /tmp/lab09-record.json
+      - run: docker compose up -d --force-recreate --wait
+      - run: python tools/smoke.py --url http://127.0.0.1:8080 --verify-file /tmp/lab09-record.json
+      - run: docker compose stop ai
+      - run: python tools/smoke.py --url http://127.0.0.1:8080 --expect-ai-down
+      - run: docker compose up -d --wait ai
+      - run: python tools/smoke.py --url http://127.0.0.1:8080
+      - if: failure()
+        run: docker compose logs --tail=50
+      - if: always()
+        run: docker compose down

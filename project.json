@@ -1,0 +1,87 @@
+{
+  "id": "movie-reviews",
+  "title": "Movie review board",
+  "goal": "Import movie reviews, classify sentiment, and view simple sentiment counts for each movie.",
+  "input_guidance": "Upload a CSV with review_id, movie_title, and review_text. Browse the classified reviews and view positive, neutral, and negative counts for a selected movie.",
+  "scope": "Use fictional movies and reviews. CSV is the only required input mode. Percentages, charts, saved import history, external movie APIs, review scraping, user accounts, and star-rating prediction are not required.",
+  "input_label": "Movie title and review",
+  "placeholder": "Moon Garden: wonderful acting and a delightful story.",
+  "history_title": "Recent reviews",
+  "categories": [
+    "positive",
+    "neutral",
+    "negative"
+  ],
+  "examples": [
+    {
+      "text": "Wonderful acting and brilliant visuals made a delightful film",
+      "category": "positive"
+    },
+    {
+      "text": "The film follows two characters in a coastal town",
+      "category": "neutral"
+    },
+    {
+      "text": "Awful acting and boring dialogue made a dreadful movie",
+      "category": "negative"
+    }
+  ],
+  "service_assignments": true,
+  "task_page": "/tasks/movie-reviews",
+  "service_titles": {
+    "W": "Create and deploy the website microservice",
+    "I": "Create and deploy the movie-review processing microservice",
+    "A": "Create and deploy a sentiment-classification microservice",
+    "D": "Create and deploy the PostgreSQL database and database-access microservice"
+  },
+  "task_titles": {
+    "W1": "Create and deploy the website microservice",
+    "W2": "Create and deploy the website microservice",
+    "I1": "Create and deploy the movie-review processing microservice",
+    "I2": "Create and deploy the movie-review processing microservice",
+    "A1": "Create and deploy a sentiment-classification microservice",
+    "A2": "Create and deploy a sentiment-classification microservice",
+    "D1": "Create and deploy the PostgreSQL database and database-access microservice",
+    "D2": "Create and deploy the PostgreSQL database and database-access microservice"
+  },
+  "role_names": {
+    "W": "Website microservice",
+    "I": "Movie-review processing microservice",
+    "A": "CPU ML-classification microservice",
+    "D": "PostgreSQL database and database-access microservice"
+  },
+  "architecture_requirement": "Architecture: four independently running microservices\u2014web, reviews, ai, and data\u2014plus PostgreSQL. Each student owns the complete implementation, API, tests, container, and deployment of one service. D owns the database itself as well as its API.",
+  "website_requirement": "Website: Upload a movie-review CSV and show added, duplicate, and skipped/failed row counts for the current import. List reviews with movie titles and predicted sentiment; filter by movie and sentiment. Display positive, neutral, and negative review counts for the selected movie.",
+  "completion_requirement": "Internet deployment: Import a fresh CSV of reviews for two fictional movies and see saved reviews with sentiment predictions. Filter by movie and sentiment and verify that movie's sentiment counts. Refresh and reimport the same CSV: review IDs/counts and per-movie counts remain unchanged. All four services and PostgreSQL must participate. The entire application must be in one team GitHub repository, including every microservice, database schema/migrations, tests, model training/evaluation code and data, model-loading instructions, deployment configuration, and documentation.",
+  "service_plan": {
+    "service": "reviews",
+    "name": "movie-review processing",
+    "web": [
+      "Upload a movie-review CSV and show added, duplicate, and skipped/failed row counts for the current import.",
+      "List reviews with movie titles and predicted sentiment; filter by movie and sentiment.",
+      "Display positive, neutral, and negative review counts for the selected movie."
+    ],
+    "domain": [
+      "Expose CSV-import and per-movie sentiment-count HTTP endpoints. Require review_id, movie_title, and review_text; normalize movie-title whitespace.",
+      "Call ai for each new review and save it, its sentiment, and model version through data.",
+      "Deduplicate by review_id: identical reimports preserve existing rows; reject conflicting reuse of an ID.",
+      "Calculate positive, neutral, and negative counts using all stored reviews for the selected movie, retrieved through data. Return zeros for an empty result.",
+      "Limit each CSV to 1 MiB and 20 rows. Return added, duplicate, and skipped/failed counts for this request."
+    ],
+    "model_input": "the review text, without using the movie title as a sentiment label",
+    "ml_extra": [
+      "Return positive, neutral, or negative. Include an unseen mixed-sentiment or negation example in the evaluation and explain the limitation."
+    ],
+    "data_entities": "reviews (id, unique external_id, movie_title, review_text, sentiment, model_version, created_at)",
+    "data": [
+      "Enforce unique external review IDs and valid sentiment labels. Identical reimports must not duplicate rows.",
+      "Provide create/list APIs, movie/sentiment filters, and complete review retrieval for per-movie counts."
+    ],
+    "exam": [
+      "Import a fresh CSV of reviews for two fictional movies and see saved reviews with sentiment predictions.",
+      "Filter by movie and sentiment and verify that movie's sentiment counts.",
+      "Refresh and reimport the same CSV: review IDs/counts and per-movie counts remain unchanged."
+    ],
+    "sample_file": "sample-input.csv"
+  }
+}
