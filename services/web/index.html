@@ -6,78 +6,236 @@
   <title>{{title}}</title>
   <style>
     :root { color-scheme: light; font-family: system-ui, sans-serif; color: #172c36; background: #f1f5f5; }
-    body { max-width: 760px; margin: 3rem auto; padding: 0 1.25rem; }
+    [hidden] { display: none !important; }
+    body { max-width: 900px; margin: 2.5rem auto; padding: 0 1.25rem; }
     h1 { font-size: clamp(2rem, 7vw, 3rem); margin-bottom: .5rem; }
+    h2 { font-size: 1.25rem; margin: 0 0 .75rem; }
     .eyebrow { text-transform: uppercase; letter-spacing: .13em; font-size: .75rem; color: #466e70; }
     .intro { line-height: 1.6; color: #49606a; }
-    form, article { background: white; border: 1px solid #d4e0e2; border-radius: 12px; padding: 1.25rem; margin: 1rem 0; }
-    label { display: block; font-weight: 650; margin-bottom: .5rem; }
-    textarea { box-sizing: border-box; width: 100%; min-height: 110px; padding: .8rem; font: inherit; border: 1px solid #94abad; border-radius: 6px; }
-    button { margin-top: .8rem; border: 0; border-radius: 6px; background: #14615c; color: white; padding: .75rem 1rem; font: inherit; cursor: pointer; }
+    .card, article { background: white; border: 1px solid #d4e0e2; border-radius: 12px; padding: 1.25rem; margin: 1rem 0; }
+    label { display: block; font-weight: 650; margin-bottom: .4rem; }
+    input[type=file], select { font: inherit; max-width: 100%; }
+    select { padding: .5rem; border: 1px solid #94abad; border-radius: 6px; background: white; min-width: 12rem; }
+    button { border: 0; border-radius: 6px; background: #14615c; color: white; padding: .7rem 1rem; font: inherit; cursor: pointer; }
     button:disabled { opacity: .5; cursor: wait; }
-    button:focus-visible, textarea:focus-visible { outline: 3px solid #dfad43; outline-offset: 3px; }
-    #message { min-height: 1.5rem; }
-    .meta { color: #49606a; font-size: .8rem; overflow-wrap: anywhere; }
-    .request { white-space: pre-wrap; overflow-wrap: anywhere; }
+    button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #dfad43; outline-offset: 3px; }
+    .row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+    .status { min-height: 1.5rem; margin: .75rem 0 0; }
+    .status.error { color: #a0302a; font-weight: 600; }
+    .status.success { color: #14615c; font-weight: 600; }
+    .meta, .hint { color: #49606a; font-size: .85rem; overflow-wrap: anywhere; }
+    .hint code { background: #eef3f3; padding: 0 .25rem; border-radius: 4px; }
+    .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 0; padding: 0; list-style: none; }
+    .chips li { background: #eef3f3; border-radius: 999px; padding: .3rem .8rem; font-weight: 600; }
+    .skipped { margin: .5rem 0 0; padding-left: 1.2rem; color: #6b3b1f; }
+    .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-top: 1rem; }
+    .count { border-radius: 10px; padding: .75rem; text-align: center; }
+    .count strong { display: block; font-size: 1.8rem; }
+    .positive { background: #e3f4ea; color: #1d6b3d; }
+    .neutral { background: #eceff1; color: #3c4b52; }
+    .negative { background: #fbe7e6; color: #9a2f28; }
+    .badge { display: inline-block; border-radius: 999px; padding: .15rem .65rem; font-size: .8rem; font-weight: 700; }
+    article h3 { margin: 0 0 .4rem; font-size: 1rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+    .review { white-space: pre-wrap; overflow-wrap: anywhere; margin: .3rem 0; }
   </style>
 </head>
 <body>
   <p class="eyebrow">Lab 9 · AI Service Relay</p>
   <h1>{{title}}</h1>
-  <p class="intro">{{goal}} {{input_guidance}} Use fictional examples only: history is shared with everyone.</p>
-  <form id="request-form">
-    <label for="text">{{input_label}}</label>
-    <textarea id="text" maxlength="1000" required placeholder="{{placeholder}}"></textarea>
-    <button id="submit">Classify and save</button>
-    <p id="message" role="status" aria-live="polite"></p>
-  </form>
-  <h2>{{history_title}}</h2>
-  <p class="meta">Categories are model suggestions and may be wrong. The model uses a small synthetic training set.</p>
-  <div id="history" aria-live="polite"></div>
+  <p class="intro">{{goal}} {{input_guidance}} Use fictional movies and reviews only: saved reviews are shared with everyone.</p>
+
+  <section class="card" aria-labelledby="import-title">
+    <h2 id="import-title">Import reviews</h2>
+    <form id="import-form" class="row">
+      <div>
+        <label for="csv-file">CSV file</label>
+        <input id="csv-file" type="file" accept=".csv,text/csv" required>
+      </div>
+      <button id="import-button">Import CSV</button>
+    </form>
+    <p class="hint">Columns: <code>review_id</code>, <code>movie_title</code>, <code>review_text</code>. Up to 20 reviews and 1 MiB per file.
+      Example review: “{{placeholder}}”. Importing the same file again adds nothing new.</p>
+    <p id="import-status" class="status" role="status" aria-live="polite"></p>
+    <ul id="import-summary" class="chips" hidden></ul>
+    <ul id="import-skipped" class="skipped" hidden></ul>
+  </section>
+
+  <section class="card" aria-labelledby="browse-title">
+    <h2 id="browse-title">{{history_title}}</h2>
+    <div class="row">
+      <div>
+        <label for="movie">Movie</label>
+        <select id="movie"><option value="">All movies</option></select>
+      </div>
+      <div>
+        <label for="sentiment">Sentiment</label>
+        <select id="sentiment">
+          <option value="">All sentiments</option>
+          <option value="positive">Positive</option>
+          <option value="neutral">Neutral</option>
+          <option value="negative">Negative</option>
+        </select>
+      </div>
+    </div>
+    <div id="counts-area" aria-live="polite">
+      <p id="counts-status" class="status"></p>
+      <div id="counts" class="counts" hidden>
+        <div class="count positive"><strong id="count-positive">0</strong>Positive</div>
+        <div class="count neutral"><strong id="count-neutral">0</strong>Neutral</div>
+        <div class="count negative"><strong id="count-negative">0</strong>Negative</div>
+      </div>
+    </div>
+  </section>
+
+  <p class="meta">Each entry shows the {{input_label}}. Sentiments are model suggestions from a small synthetic training set and may be wrong.</p>
+  <p id="reviews-status" class="status" role="status" aria-live="polite"></p>
+  <div id="reviews"></div>
+
   <script>
-    const message = document.querySelector('#message');
-    const button = document.querySelector('#submit');
+    const MAX_BYTES = 1024 * 1024;
+    const $ = selector => document.querySelector(selector);
+    const movieSelect = $('#movie');
+    const sentimentSelect = $('#sentiment');
+
+    function setStatus(element, text, kind = '') {
+      element.textContent = text;
+      element.className = 'status' + (kind ? ' ' + kind : '');
+    }
+
     async function api(path, options) {
       const response = await fetch(path, options);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Request failed.');
+      let data;
+      try { data = await response.json(); }
+      catch { throw new Error('The server sent an unexpected reply. Please try again.'); }
+      if (!response.ok) throw new Error(data.error || 'Request failed. Please try again.');
       return data;
     }
-    async function history() {
-      const tickets = await api('/api/tickets');
-      const container = document.querySelector('#history');
-      container.replaceChildren();
-      if (!tickets.length) container.textContent = 'No entries yet. Try the form above.';
-      for (const ticket of tickets) {
-        const article = document.createElement('article');
-        const heading = document.createElement('strong');
-        heading.textContent = `Suggested category: ${ticket.category}`;
-        const text = document.createElement('p');
-        text.className = 'request';
-        text.textContent = ticket.text;
-        const meta = document.createElement('p');
-        meta.className = 'meta';
-        meta.textContent = `#${ticket.id} · ${ticket.created_at} · ${ticket.model_version}`;
-        article.append(heading, text, meta);
-        container.append(article);
+
+    function filterQuery(includeSentiment) {
+      const params = new URLSearchParams();
+      if (movieSelect.value) params.set('movie_title', movieSelect.value);
+      if (includeSentiment && sentimentSelect.value) params.set('sentiment', sentimentSelect.value);
+      const query = params.toString();
+      return query ? '?' + query : '';
+    }
+
+    async function loadMovies() {
+      const chosen = movieSelect.value;
+      const movies = await api('/api/movies');
+      movieSelect.replaceChildren(new Option('All movies', ''));
+      for (const title of movies) movieSelect.append(new Option(title, title));
+      movieSelect.value = movies.includes(chosen) ? chosen : '';
+    }
+
+    async function loadReviews() {
+      const container = $('#reviews');
+      const status = $('#reviews-status');
+      setStatus(status, 'Loading reviews…');
+      try {
+        const reviews = await api('/api/reviews' + filterQuery(true));
+        container.replaceChildren();
+        if (!reviews.length) {
+          const filtered = movieSelect.value || sentimentSelect.value;
+          setStatus(status, filtered ? 'No reviews match these filters.' : 'No reviews yet. Import a CSV above.');
+          return;
+        }
+        setStatus(status, `Showing ${reviews.length} review${reviews.length === 1 ? '' : 's'}.`);
+        for (const review of reviews) {
+          const article = document.createElement('article');
+          const heading = document.createElement('h3');
+          const title = document.createElement('span');
+          title.textContent = review.movie_title;
+          const badge = document.createElement('span');
+          badge.className = 'badge ' + (['positive', 'neutral', 'negative'].includes(review.sentiment) ? review.sentiment : 'neutral');
+          badge.textContent = review.sentiment;
+          heading.append(title, badge);
+          const text = document.createElement('p');
+          text.className = 'review';
+          text.textContent = review.review_text;
+          const meta = document.createElement('p');
+          meta.className = 'meta';
+          meta.textContent = `${review.external_id} · ${review.created_at} · model ${review.model_version}`;
+          article.append(heading, text, meta);
+          container.append(article);
+        }
+      } catch (error) {
+        container.replaceChildren();
+        setStatus(status, error.message, 'error');
       }
     }
-    document.querySelector('#request-form').addEventListener('submit', async event => {
-      event.preventDefault();
-      button.disabled = true;
-      message.textContent = 'Classifying and saving…';
+
+    async function loadCounts() {
+      const status = $('#counts-status');
+      const box = $('#counts');
+      if (!movieSelect.value) {
+        box.hidden = true;
+        setStatus(status, 'Choose a movie to see its sentiment counts.');
+        return;
+      }
+      setStatus(status, 'Loading counts…');
       try {
-        const ticket = await api('/api/tickets', {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({text: document.querySelector('#text').value})
-        });
-        message.textContent = `Saved #${ticket.id}. Suggested category: ${ticket.category}.`;
-        document.querySelector('#text').value = '';
-        await history();
-      } catch (error) { message.textContent = error.message; }
-      finally { button.disabled = false; }
+        const counts = await api('/api/counts' + filterQuery(false));
+        for (const label of ['positive', 'neutral', 'negative']) $('#count-' + label).textContent = counts[label];
+        box.hidden = false;
+        setStatus(status, `${counts.movie_title}: ${counts.total} review${counts.total === 1 ? '' : 's'} in total.`);
+      } catch (error) {
+        box.hidden = true;
+        setStatus(status, error.message, 'error');
+      }
+    }
+
+    async function refresh() {
+      try { await loadMovies(); }
+      catch (error) { setStatus($('#reviews-status'), error.message, 'error'); }
+      await Promise.all([loadReviews(), loadCounts()]);
+    }
+
+    function showImport(result) {
+      const summary = $('#import-summary');
+      summary.replaceChildren();
+      for (const [label, value] of [['added', result.added], ['duplicates', result.duplicates], ['skipped', result.skipped]]) {
+        const item = document.createElement('li');
+        item.textContent = `${value} ${label}`;
+        summary.append(item);
+      }
+      summary.hidden = false;
+      const skipped = $('#import-skipped');
+      skipped.replaceChildren();
+      for (const row of result.rows.filter(row => row.status === 'skipped')) {
+        const item = document.createElement('li');
+        item.textContent = `Row ${row.row}${row.review_id ? ' (' + row.review_id + ')' : ''}: ${row.reason}`;
+        skipped.append(item);
+      }
+      skipped.hidden = !skipped.children.length;
+    }
+
+    $('#import-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const status = $('#import-status');
+      const button = $('#import-button');
+      const file = $('#csv-file').files[0];
+      $('#import-summary').hidden = true;
+      $('#import-skipped').hidden = true;
+      if (!file) return setStatus(status, 'Choose a CSV file first.', 'error');
+      if (file.size === 0) return setStatus(status, 'The file is empty.', 'error');
+      if (file.size > MAX_BYTES) return setStatus(status, 'The file must be at most 1 MiB.', 'error');
+      button.disabled = true;
+      setStatus(status, 'Importing and classifying… this can take a few seconds.');
+      try {
+        const result = await api('/api/imports', { method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: file });
+        showImport(result);
+        setStatus(status, `Imported ${file.name}.`, 'success');
+        await refresh();
+      } catch (error) {
+        setStatus(status, error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
     });
-    history().catch(error => { document.querySelector('#history').textContent = error.message; });
+
+    movieSelect.addEventListener('change', () => { loadReviews(); loadCounts(); });
+    sentimentSelect.addEventListener('change', loadReviews);
+    refresh();
   </script>
 </body>
 </html>
