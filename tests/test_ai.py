@@ -3,6 +3,8 @@ from contextlib import contextmanager
 from http.server import ThreadingHTTPServer
 import csv
 import json
+from pathlib import Path
+import tempfile
 import threading
 import unittest
 from unittest.mock import patch
@@ -10,7 +12,7 @@ from unittest.mock import patch
 from common import Handler
 from project import CATEGORIES
 from services.ai.app import AI
-from services.ai.model import ARTIFACT, TRAINING, Classifier
+from services.ai.model import ARTIFACT, TRAINING, Classifier, version_for
 from services.ai.train import EVAL, evaluate
 from tools.smoke import request
 
@@ -45,6 +47,16 @@ class SentimentTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.log_patch.stop()
+
+    def test_version_ignores_windows_line_endings(self):
+        text = TRAINING.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        with tempfile.TemporaryDirectory() as folder:
+            lf = Path(folder) / "lf.csv"
+            crlf = Path(folder) / "crlf.csv"
+            lf.write_bytes(text)
+            crlf.write_bytes(text.replace(b"\n", b"\r\n"))
+            self.assertEqual(version_for(lf), version_for(crlf))
+            self.assertEqual(Classifier(lf).predict("a fine film"), Classifier(crlf).predict("a fine film"))
 
     def test_artifact_version_is_what_the_service_loads(self):
         saved = json.loads(ARTIFACT.read_text(encoding="utf-8"))

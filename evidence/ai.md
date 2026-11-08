@@ -28,11 +28,13 @@
 
   Start locally from the repository root: `python -m services.ai.app`. `PORT` defaults to `8000`. This machine already had another program on port 8000, so the local process uses `PORT=8010`.
 
-  Container: `docker build -f services/ai/Dockerfile -t lab9-ai .` then `docker run --rm -p 8010:8000 lab9-ai`. The image copies `services/ai`, including `artifact.json`. No environment variables are required. The process listens on `0.0.0.0` and `PORT`.
+  Container: `docker build -f services/ai/Dockerfile -t lab9-ai .` The image copies `services/ai`, including `artifact.json`. No database variables. The process listens on `0.0.0.0` and `PORT` (default `8000`).
+
+  Render release file: `render.yaml` defines one web service, `lab9-ai`, from that Dockerfile, with health check `/healthz`. It does not use PostgreSQL.
 
 - Deployed service check (time and result):
 
-  Local process, 8 November 2026: `GET http://127.0.0.1:8010/healthz` returned `ok` with `model_version` `nb-v2-6aa22689257b`. A public HTTPS deployment is still to be done.
+  Local container, 8 November 2026: `docker run -e PORT=9000 -p 8012:9000 lab9-ai`. `GET /healthz` returned `ok` with `model_version` `nb-v2-6aa22689257b`. `POST /predict` for the clear positive review returned `positive` with that version. A public URL still needs the team Render account; this service does not need the `data` database.
 
 - Prepared or extended labeled data and held-out split:
 
@@ -40,7 +42,7 @@
 
 - Training code changes, reproducible command, parameters, and resulting artifact/version:
 
-  `services/ai/train.py` fits a multinomial Naive Bayes model with add-one smoothing on lowercase English word counts, then writes `services/ai/artifact.json`. `services/ai/app.py` loads that artifact when the process starts and does not retrain on launch. Command: `python -m services.ai.train`. Version: `nb-v2-6aa22689257b`.
+  `services/ai/train.py` fits a multinomial Naive Bayes model with add-one smoothing on lowercase English word counts, then writes `services/ai/artifact.json`. `services/ai/app.py` loads that artifact when the process starts and does not retrain on launch. Command: `python -m services.ai.train`. Version: `nb-v2-6aa22689257b`. The version hash normalizes newlines to LF before hashing.
 
 - Evaluation command, expected/actual labels, accuracy, and observed limitation:
 
