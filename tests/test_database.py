@@ -68,14 +68,14 @@ class DatabaseTests(unittest.TestCase):
         self.migrate()
         with tempfile.TemporaryDirectory() as folder:
             shutil.copytree(MIGRATIONS, folder, dirs_exist_ok=True)
-            Path(folder, "003_add_note.sql").write_text("ALTER TABLE tickets ADD COLUMN note TEXT NOT NULL DEFAULT 'kept';")
+            Path(folder, "900_add_note.sql").write_text("ALTER TABLE tickets ADD COLUMN note TEXT NOT NULL DEFAULT 'kept';")
             self.migrate(folder)
             self.migrate(folder)
             with self.connect() as connection:
                 row = connection.execute("SELECT * FROM tickets WHERE id = %s", (ticket_id,)).fetchone()
                 self.assertEqual(row["text"], "Saved before upgrade")
                 self.assertEqual(row["note"], "kept")
-                self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], 3)
+                self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], len(list(Path(folder).glob("*.sql"))))
 
     def test_upgrade_from_old_schema_without_migration_ledger(self):
         with self.connect() as connection:
@@ -85,19 +85,19 @@ class DatabaseTests(unittest.TestCase):
         self.migrate()
         with self.connect() as connection:
             self.assertEqual(connection.execute("SELECT id FROM tickets").fetchone()["id"], ticket_id)
-            self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], 2)
+            self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], len(list(MIGRATIONS.glob("*.sql"))))
 
     def test_failed_upgrade_rolls_back_schema_and_ledger(self):
         self.migrate()
         self.insert()
         with tempfile.TemporaryDirectory() as folder:
             shutil.copytree(MIGRATIONS, folder, dirs_exist_ok=True)
-            Path(folder, "003_add_note.sql").write_text("ALTER TABLE tickets ADD COLUMN note TEXT;")
-            Path(folder, "004_invalid.sql").write_text("THIS IS INVALID SQL;")
+            Path(folder, "900_add_note.sql").write_text("ALTER TABLE tickets ADD COLUMN note TEXT;")
+            Path(folder, "901_invalid.sql").write_text("THIS IS INVALID SQL;")
             with self.assertRaises(psycopg.Error):
                 self.migrate(folder)
         with self.connect() as connection:
-            self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], 2)
+            self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], len(list(MIGRATIONS.glob("*.sql"))))
             self.assertNotIn("note", connection.execute("SELECT * FROM tickets").fetchone())
 
     def test_applied_migrations_cannot_be_rewritten(self):
@@ -112,7 +112,7 @@ class DatabaseTests(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:
             list(pool.map(lambda _: self.migrate(), range(2)))
         with self.connect() as connection:
-            self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], 2)
+            self.assertEqual(connection.execute("SELECT count(*) AS n FROM schema_migrations").fetchone()["n"], len(list(MIGRATIONS.glob("*.sql"))))
 
     def test_search_filters_and_missing_ids_through_web_and_real_database(self):
         self.migrate()
