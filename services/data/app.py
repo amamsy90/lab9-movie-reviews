@@ -24,6 +24,15 @@ REVIEW_LIMITS = {
 }
 
 
+
+REVIEW_SELECT = """
+SELECT r.id, r.external_id, m.title AS movie_title,
+       r.review_text, p.sentiment, p.model_version, r.created_at
+FROM reviews AS r
+JOIN movies AS m ON m.id = r.movie_id
+JOIN predictions AS p ON p.review_id = r.id
+"""
+
 def connect():
     # Open a database connection using environment variables.
     return psycopg.connect(
@@ -74,7 +83,7 @@ def validate_review(payload):
 
     # Only the three agreed sentiment labels are allowed.
     sentiment = payload.get("sentiment")
-    if sentiment not in SENTIMENTS:
+    if not isinstance(sentiment, str) or sentiment not in SENTIMENTS:
         raise APIError(400, "Invalid sentiment.")
 
     cleaned["sentiment"] = sentiment
@@ -196,7 +205,7 @@ class Data(Handler):
                     external_id = unquote(review_detail[1])
 
                     row = connection.execute(
-                        "SELECT * FROM reviews WHERE external_id = %s",
+                        REVIEW_SELECT + " WHERE r.external_id = %s",
                         (external_id,),
                     ).fetchone()
 
@@ -208,19 +217,17 @@ class Data(Handler):
                 elif path == "/movies":
                     # Return all distinct movie titles alphabetically.
                     rows = connection.execute(
-                        "SELECT DISTINCT movie_title FROM reviews "
-                        "ORDER BY movie_title"
+                        "SELECT title FROM movies ORDER BY title"
                     ).fetchall()
 
-                    result = [row["movie_title"] for row in rows]
+                    result = [row["title"] for row in rows]
 
                 elif path == "/reviews" and method == "GET":
                     # Build a safe SQL query with optional filters.
                     sql = (
-                        "SELECT * FROM reviews "
-                        "WHERE (%s = '' OR movie_title = %s) "
-                        "AND (%s = '' OR sentiment = %s) "
-                        "ORDER BY id DESC"
+                        REVIEW_SELECT + " WHERE (%s = '' OR m.title = %s) "
+                        "AND (%s = '' OR p.sentiment = %s) "
+                        "ORDER BY r.id DESC"
                     )
 
                     parameters = [
@@ -242,21 +249,33 @@ class Data(Handler):
 
                 elif path == "/reviews" and method == "POST":
                     # Save a new review and return the stored record.
-                    row = connection.execute(
-                        "INSERT INTO reviews "
-                        "(external_id, movie_title, review_text, "
-                        "sentiment, model_version) "
-                        "VALUES (%s, %s, %s, %s, %s) "
-                        "RETURNING *",
-                        (
-                            review["external_id"],
-                            review["movie_title"],
-                            review["review_text"],
-                            review["sentiment"],
-                            review["model_version"],
-                        ),
+                    # Insert or reuse the movie title.
+                    movie = connection.execute(
+                        "INSERT INTO movies (title) VALUES (%s) "
+                        "ON CONFLICT (title) DO UPDATE SET title = EXCLUDED.title "
+                        "RETURNING id",
+                        (review["movie_title"],),
                     ).fetchone()
 
+                    # Save the original review.
+                    saved = connection.execute(
+                        "INSERT INTO reviews (movie_id, external_id, review_text) "
+                        "VALUES (%s, %s, %s) RETURNING id",
+                        (movie["id"], review["external_id"], review["review_text"]),
+                    ).fetchone()
+
+                    # Save the AI prediction in the same transaction.
+                    connection.execute(
+                        "INSERT INTO predictions (review_id, sentiment, model_version) "
+                        "VALUES (%s, %s, %s)",
+                        (saved["id"], review["sentiment"], review["model_version"]),
+                    )
+
+                    # Return the same flat JSON response as before.
+                    row = connection.execute(
+                        REVIEW_SELECT + " WHERE r.id = %s",
+                        (saved["id"],),
+                    ).fetchone()
                     result = serialize(row)
 
                 elif path == "/tickets" and method == "GET":
