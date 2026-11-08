@@ -1,0 +1,9 @@
+text,category,kind
+Wonderful acting and brilliant visuals made a delightful film,positive,clear
+The film follows two characters in a coastal town,neutral,clear
+Awful acting and boring dialogue made a dreadful movie,negative,clear
+Outstanding performances and a wonderful story made me love this film,positive,clear
+The film contains six chapters and was filmed in one town,neutral,clear
+I hated the awful pacing and the dreadful performances,negative,clear
+The movie was not wonderful and not delightful,negative,negation
+Wonderful brilliant and delightful acting but the story was boring,negative,mixed
