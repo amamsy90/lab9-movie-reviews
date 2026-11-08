@@ -1,0 +1,9 @@
+# Release config for the ai service. It does not use PostgreSQL.
+# Other owners can add their services here.
+services:
+  - type: web
+    name: lab9-ai
+    runtime: docker
+    dockerfilePath: ./services/ai/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz

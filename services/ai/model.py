@@ -22,7 +22,9 @@ def tokens(text):
 
 
 def version_for(dataset):
-    digest = hashlib.sha256(Path(dataset).read_bytes()).hexdigest()[:12]
+    # Hash LF text so a Windows CRLF checkout does not change the version.
+    raw = Path(dataset).read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    digest = hashlib.sha256(raw).hexdigest()[:12]
     return "nb-v2-" + digest
 
 

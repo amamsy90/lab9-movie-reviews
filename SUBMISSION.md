@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- | --- |
 | W: `web` | | [web](evidence/web.md) | | | |
 | I: `reviews` | | [reviews](evidence/reviews.md) | | | |
-| A: `ai` | | [ai](evidence/ai.md) | | | |
+| A: `ai` | Aishah | [ai](evidence/ai.md) | https://github.com/amamsy90/lab9-movie-reviews/pull/3 | A2 branch `ai/a2-release` | https://github.com/amamsy90/lab9-movie-reviews/pull/3 |
 | D: PostgreSQL + `data` | | [data](evidence/data.md) | | | |
 
 Run the [examiner's workflow in PROJECT.md](PROJECT.md). Record input, expected/actual result for each step, check time, and checker:
