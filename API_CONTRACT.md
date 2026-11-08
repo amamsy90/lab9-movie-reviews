@@ -1,6 +1,6 @@
 # Movie review board: API contract
 
-Draft for team-01. Each owner defines their own service: `web` and `reviews` (Ghaith), `ai` (Aishah), `data` + PostgreSQL (Maitha). `web`, `reviews`, and `ai` are defined below. Maitha still fills in `data`.
+Agreed by team-01. Each owner defines their own service: `web` and `reviews` (Ghaith), `ai` (Aishah), `data` + PostgreSQL (Maitha).
 
 ## Shared rules (from the starter and the brief)
 
@@ -48,14 +48,79 @@ A1 plan, so `reviews` can build against this shape now:
 - Keep empty-text rejection and the 1000-character limit.
 - Evaluate held-out reviews for every label, including a negation example and a mixed-sentiment example, and record the word-count limitation in `evidence/ai.md`.
 
-## What `reviews` and `web` need from `data` (Maitha to define)
+## `data` (Maitha)
 
-1. **Save one review**: review_id, movie title, review text, sentiment, model version. What happens if the review_id is already stored?
-2. **Look up a stored review by its review_id**, so `reviews` can tell a repeat of the same review from a different review reusing an ID, and avoid calling `ai` for repeats.
-3. **List reviews for the website**, filtered by movie and/or sentiment.
-4. **Get every stored review for one movie** (no page limit), so `reviews` can build the counts.
-5. **List movie titles** for the website's movie filter (optional; `web` can manage without it).
-6. Field limits (review_id, title, text lengths), and the route names, query names and reply shape.
+Only `data` connects directly to PostgreSQL. The existing `/tickets` API stays for baseline compatibility. `GET /healthz` is provided.
+
+All saved review responses use:
+
+```json
+{
+  "id": 1,
+  "external_id": "review-1",
+  "movie_title": "Moon Garden",
+  "review_text": "Wonderful acting and brilliant visuals made a delightful film",
+  "sentiment": "positive",
+  "model_version": "nb-v2-example",
+  "created_at": "2026-11-08T12:00:00+00:00"
+}
+```
+
+**1. Save one review: `POST /reviews`**
+
+```json
+{
+  "external_id": "review-1",
+  "movie_title": "Moon Garden",
+  "review_text": "Wonderful acting and brilliant visuals made a delightful film",
+  "sentiment": "positive",
+  "model_version": "nb-v2-example"
+}
+```
+
+- New review: HTTP 201, returning the saved review.
+- Existing `external_id`: HTTP 409 with `{"error": "Review ID already exists."}`.
+- PostgreSQL enforces uniqueness, so duplicates cannot create extra rows.
+
+**2. Look up a review by review_id: `GET /reviews/by-external-id/{review_id}`**
+
+- HTTP 200: returns the stored review.
+- HTTP 404: `{"error": "Review not found."}`.
+
+The `reviews` service can compare the stored title and text with the incoming normalized values to identify identical duplicates or conflicting ID reuse before calling AI.
+
+**3. List and filter reviews: `GET /reviews`**
+
+Optional query parameters: `movie_title`, `sentiment`.
+
+- `GET /reviews`
+- `GET /reviews?movie_title=Moon%20Garden`
+- `GET /reviews?sentiment=positive`
+- `GET /reviews?movie_title=Moon%20Garden&sentiment=positive`
+
+Response: HTTP 200, a JSON array of saved review objects.
+
+**4. Get all reviews for one movie: `GET /reviews?movie_title=Moon%20Garden&all=true`**
+
+Returns every matching review without the default 100-row limit. The `reviews` service can use this for accurate sentiment counts. An unknown movie returns `[]`.
+
+**5. List movie titles: `GET /movies`**
+
+```json
+["Moon Garden", "Silver Harbor"]
+```
+
+The list contains distinct movie titles, sorted alphabetically.
+
+**6. Field limits and validation**
+
+- `external_id`: 1–100 characters, nonblank.
+- `movie_title`: 1–200 characters after whitespace normalization.
+- `review_text`: 1–1000 characters, nonblank.
+- `sentiment`: exactly `positive`, `neutral`, or `negative`.
+- `model_version`: 1–100 characters, nonblank.
+
+Invalid input returns HTTP 400 with `{"error": "..."}`.
 
 ## `reviews` (Ghaith)
 
@@ -104,8 +169,8 @@ response: 200 {"movie_title": "Moon Garden", "positive": 1, "neutral": 1, "negat
 | --- | --- |
 | `POST /api/imports` (raw CSV body) | `reviews POST /imports` |
 | `GET /api/counts?movie_title=` | `reviews GET /counts` |
-| `GET /api/reviews?movie_title=&sentiment=` | `data` review list (route set by Maitha) |
-| `GET /api/movies` | `data` movie list, if Maitha provides one |
+| `GET /api/reviews?movie_title=&sentiment=` | `data GET /reviews` |
+| `GET /api/movies` | `data GET /movies` |
 
 `web` returns errors from `reviews` and `data` to the browser unchanged (status and message).
 
@@ -116,4 +181,4 @@ response: 200 {"movie_title": "Moon Garden", "positive": 1, "neutral": 1, "negat
 | `web` | `DATA_URL`, `AI_URL` (baseline), `REVIEWS_URL` |
 | `reviews` | `AI_URL`, `DATA_URL` |
 | `ai` | `PORT` only (default `8000`). `reviews` calls `AI_URL`. No database variables. |
-| `data` | set by Maitha (starter uses `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) |
+| `data` | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (as in the starter) |
