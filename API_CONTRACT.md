@@ -1,6 +1,6 @@
 # Movie review board: API contract
 
-Draft for team-01. Each owner defines their own service: `web` and `reviews` (Ghaith), `ai` (Aishah), `data` + PostgreSQL (Maitha). This draft covers `web` and `reviews`, and lists what they need from `ai` and `data`. Aishah and Maitha fill in their own sections.
+Draft for team-01. Each owner defines their own service: `web` and `reviews` (Ghaith), `ai` (Aishah), `data` + PostgreSQL (Maitha). `web`, `reviews`, and `ai` are defined below. Maitha still fills in `data`.
 
 ## Shared rules (from the starter and the brief)
 
@@ -18,12 +18,35 @@ browser ──> web ──> reviews ──> ai
                                 data ──> PostgreSQL
 ```
 
-## What `reviews` needs from `ai` (Aishah to define)
+## `ai` (Aishah)
 
-1. A way to send one review's text and get back its label and the model version.
-2. Is the starter's `POST /predict` → `{"category", "model_version"}` staying, or changing?
-3. The text length limit (the starter uses 1000 characters), so `reviews` checks the same limit before calling.
-4. The error reply for bad text.
+The starter `POST /predict` contract stays. `reviews` sends one review body and stores the returned `category` and `model_version`. Do not send `movie_title`. The classifier uses the review text only. The movie title is not a sentiment label.
+
+**`POST /predict`**
+
+```json
+{"text": "Wonderful acting and brilliant visuals made a delightful film"}
+```
+
+```json
+response: 200 {"category": "positive", "model_version": "nb-v2-<training-file-hash>"}
+```
+
+- `category` is `positive`, `neutral`, or `negative`.
+- `text` is required, must not be blank, and must be at most 1000 characters. `reviews` should apply that same limit before calling.
+- Bad text returns `400` with `{"error": "Enter between 1 and 1000 characters."}`. That covers missing text, blank text, and text over 1000 characters.
+- If `ai` is down, `reviews` keeps its own row status (`skipped`, reason "service unavailable"). `ai` does not invent a label for that case.
+
+**`GET /healthz`** stays as in the starter: `200 {"service": "ai", "status": "ok", "model_version": "<version>"}`.
+
+No other `ai` route. There is no batch endpoint.
+
+A1 plan, so `reviews` can build against this shape now:
+
+- Train a CPU Naive Bayes classifier on labeled review text and save `services/ai/artifact.json`.
+- Load that artifact when `ai` starts and return its version on every prediction. The version string can change when the training file changes; store whatever `model_version` comes back.
+- Keep empty-text rejection and the 1000-character limit.
+- Evaluate held-out reviews for every label, including a negation example and a mixed-sentiment example, and record the word-count limitation in `evidence/ai.md`.
 
 ## What `reviews` and `web` need from `data` (Maitha to define)
 
@@ -92,5 +115,5 @@ response: 200 {"movie_title": "Moon Garden", "positive": 1, "neutral": 1, "negat
 | --- | --- |
 | `web` | `DATA_URL`, `AI_URL` (baseline), `REVIEWS_URL` |
 | `reviews` | `AI_URL`, `DATA_URL` |
-| `ai` | set by Aishah |
+| `ai` | `PORT` only (default `8000`). `reviews` calls `AI_URL`. No database variables. |
 | `data` | set by Maitha (starter uses `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) |
