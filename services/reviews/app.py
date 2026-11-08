@@ -6,7 +6,7 @@ Never connects to PostgreSQL.
 import csv
 import io
 import os
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from common import APIError, Handler, request_json, serve
 from project import CATEGORIES
@@ -16,18 +16,17 @@ DATA_URL = os.environ.get("DATA_URL", "http://data:8000")
 
 MAX_ROWS = 20
 COLUMNS = ("review_id", "movie_title", "review_text")
-# review_text matches the model's 1000-character input limit; the other two
-# are placeholders until the data owner confirms field limits (PR #1).
+# The same limits as data (and ai's 1000-character text limit), API_CONTRACT.md.
 LIMITS = {"review_id": 100, "movie_title": 200, "review_text": 1000}
 UNAVAILABLE = "service unavailable"
 
 
 # --- Connection points --------------------------------------------------------
-# Every call to ai and data goes through these four functions, so agreeing the
-# final routes in API_CONTRACT.md (PR #1) only changes the lines below.
+# Every call to ai and data goes through these four functions. Routes are the
+# ones agreed in API_CONTRACT.md.
 
 def classify(text):
-    """ai: the starter's POST /predict -> {"category", "model_version"}."""
+    """ai: POST /predict {"text"} -> {"category", "model_version"}."""
     result = request_json(f"{AI_URL}/predict", {"text": text})
     sentiment = result.get("category") if isinstance(result, dict) else None
     version = result.get("model_version") if isinstance(result, dict) else None
@@ -37,21 +36,26 @@ def classify(text):
 
 
 def find_review(review_id):
-    """data: look up one stored review by its review_id (placeholder route)."""
-    rows = request_json(f"{DATA_URL}/reviews?{urlencode({'external_id': review_id})}")
-    if not isinstance(rows, list):
+    """data: GET /reviews/by-external-id/{review_id} -> the review, or None on 404."""
+    try:
+        review = request_json(f"{DATA_URL}/reviews/by-external-id/{quote(review_id, safe='')}")
+    except APIError as error:
+        if error.status == 404:
+            return None
+        raise
+    if not isinstance(review, dict):
         raise APIError(502, "The data service returned an invalid response.")
-    return rows[0] if rows else None
+    return review
 
 
 def save_review(review):
-    """data: save one review (placeholder route). A 409 means the ID is taken."""
+    """data: POST /reviews -> 201 saved review; 409 means the review_id is taken."""
     return request_json(f"{DATA_URL}/reviews", review)
 
 
 def movie_reviews(movie_title):
-    """data: every stored review for one movie, no page limit (placeholder route)."""
-    rows = request_json(f"{DATA_URL}/reviews/all?{urlencode({'movie_title': movie_title})}")
+    """data: GET /reviews?movie_title=...&all=true -> every review for one movie."""
+    rows = request_json(f"{DATA_URL}/reviews?{urlencode({'movie_title': movie_title, 'all': 'true'})}")
     if not isinstance(rows, list):
         raise APIError(502, "The data service returned an invalid response.")
     return rows

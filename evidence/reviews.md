@@ -79,4 +79,4 @@ Local Docker, 8 Nov 2026, from inside the `reviews` container:
 - Real `data` calls → `404 Not found`: the review routes are not built yet. The import reported the row as skipped with that reason instead of failing.
 - `tools/smoke.py` baseline → PASS
 
-Connecting to the real `data` review routes and the full import → counts check is checkpoint I2, after the routes are agreed in PR #1.
+I2: `reviews` now calls the `data` routes agreed in `API_CONTRACT.md` (`GET /reviews/by-external-id/{review_id}`, `POST /reviews`, `GET /reviews?movie_title=...&all=true`). Tests: 36 OK (8 skipped for PostgreSQL), including review IDs with spaces and slashes. The full import → counts check against the real `data` service runs once its routes are merged.

@@ -7,7 +7,7 @@ import threading
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 from urllib.request import Request, urlopen
 
 from common import APIError, Handler, MAX_BODY_BYTES
@@ -48,21 +48,27 @@ class FakeAI(Handler):
 
 
 class FakeData(Handler):
-    """Test stand-in for data, using the placeholder routes in reviews/app.py."""
+    """Test stand-in for data, following the routes agreed in API_CONTRACT.md."""
     rows = []
+    prefix = "/reviews/by-external-id/"
 
     def route(self, method, path):
         if method == "POST" and path == "/reviews":
             review = self.body()
             if any(row["external_id"] == review["external_id"] for row in FakeData.rows):
-                raise APIError(409, "A record with this unique value already exists.")
+                raise APIError(409, "Review ID already exists.")
             row = {**review, "id": len(FakeData.rows) + 1, "created_at": "2026-11-08T00:00:00+00:00"}
             FakeData.rows.append(row)
             return self.send(201, row)
+        if method == "GET" and path.startswith(self.prefix):
+            wanted = unquote(path.removeprefix(self.prefix))
+            for row in FakeData.rows:
+                if row["external_id"] == wanted:
+                    return self.send(200, row)
+            raise APIError(404, "Review not found.")
         if method == "GET" and path == "/reviews":
-            wanted = self.query_param("external_id")
-            return self.send(200, [row for row in FakeData.rows if row["external_id"] == wanted])
-        if method == "GET" and path == "/reviews/all":
+            if self.query_param("all") != "true":
+                raise APIError(400, "Counts must ask for all reviews.")
             wanted = self.query_param("movie_title")
             return self.send(200, [row for row in FakeData.rows if row["movie_title"] == wanted])
         raise APIError(404, "Not found.")
@@ -174,6 +180,14 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual((result["added"], result["duplicates"], result["skipped"]), (0, 2, 1))
         self.assertEqual(result["rows"][1]["reason"], "review_id already used for a different review")
         self.assertIn("coastal town", FakeData.rows[1]["review_text"])
+
+    def test_review_ids_with_slashes_and_spaces_reach_data_intact(self):
+        raw = b"review_id,movie_title,review_text\nbatch 1/r#1?x,Moon Garden,Wonderful film\n"
+        with self.running() as url:
+            first = call(url + "/imports", raw)[1]
+            second = call(url + "/imports", raw)[1]
+        self.assertEqual((first["added"], second["duplicates"]), (1, 1))
+        self.assertEqual(FakeData.rows[0]["external_id"], "batch 1/r#1?x")
 
     def test_repeats_inside_one_file(self):
         raw = (SAMPLE + "review-1,Moon Garden,Wonderful acting and brilliant visuals made a delightful film\n"
