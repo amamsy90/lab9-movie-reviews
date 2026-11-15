@@ -1,6 +1,6 @@
 # `reviews` microservice: evidence
 
-Owner: @gatekg. Checkpoint I1 (implementation). Code: `services/reviews/app.py`. Tests: `tests/test_reviews.py`.
+Owner: @gatekg. Checkpoints I1 (implementation, #2) and I2 (integration and release). Code: `services/reviews/app.py`. Tests: `tests/test_reviews.py`.
 
 ## API documentation and request/response examples
 
@@ -64,23 +64,31 @@ docker compose up -d --build --wait
 docker compose ps
 ```
 
-Environment: `AI_URL` (default `http://ai:8000`), `DATA_URL` (default `http://data:8000`), `PORT` (default `8000`). `web` receives `REVIEWS_URL=http://reviews:8000`.
+Environment: `AI_URL` (default `http://ai:8000`), `DATA_URL` (default `http://data:8000`), `SERVICE_TIMEOUT` (seconds to wait for `ai` or `data`, default `90`), `PORT` (default `8000`). On Render (`render.yaml`, service `lab9-reviews`), `AI_URL` and `DATA_URL` point at the public `lab9-ai` and `lab9-data` URLs. `web` receives `REVIEWS_URL=http://reviews:8000`.
 
 ## Deployed service check (time and result)
 
 Local Docker, 8 Nov 2026: all five containers healthy (`ai`, `data`, `db`, `reviews`, `web`).
 
-Public Render service, 15 November 2026: https://lab9-reviews.onrender.com. `GET /healthz` returned `{"service": "reviews", "status": "ok"}`. I2 is https://github.com/amamsy90/lab9-movie-reviews/pull/10.
+Public Render service, 15 Nov 2026, 13:00 Asia/Dubai: `GET https://lab9-reviews.onrender.com/healthz` → `200 {"service": "reviews", "status": "ok"}`.
 
 ## Processing and real ML/storage API checks
 
-Local Docker, 8 Nov 2026, from inside the `reviews` container:
+Earlier local Docker run, 8 Nov 2026, from inside the `reviews` container (before the trained model and the `data` review routes were merged):
 
 - `GET /healthz` → `200 {"service": "reviews", "status": "ok"}`
 - Real `ai` call → `positive`, model version `nb-v1-ffcd63596016` (starter model; the trained model is pending)
 - Real `data` calls → `404 Not found`: the review routes are not built yet. The import reported the row as skipped with that reason instead of failing.
 - `tools/smoke.py` baseline → PASS
 
-I2 is https://github.com/amamsy90/lab9-movie-reviews/pull/10, opened by Ghaith. The service calls the `data` routes agreed in `API_CONTRACT.md` (`GET /reviews/by-external-id/{review_id}`, `POST /reviews`, `GET /reviews?movie_title=...&all=true`).
+I2: `reviews` now calls the `data` routes agreed in `API_CONTRACT.md` (`GET /reviews/by-external-id/{review_id}`, `POST /reviews`, `GET /reviews?movie_title=...&all=true`). Tests: 36 OK (8 skipped for PostgreSQL), including review IDs with spaces and slashes. The full import → counts check against the real `data` service runs once its routes are merged.
 
-Live check, 15 November 2026, through the public website: five new reviews were added and then reported as duplicates on reimport. Saved sentiments used the trained model `nb-v2-6aa22689257b`, not the starter model. *Silver Harbor* counts stayed 1 positive, 1 neutral, 1 negative after the reimport. The 8 November local note above, including starter model `nb-v1-ffcd63596016` and `404` from `data`, describes that earlier container run only.
+## I2: integration and release
+
+- **Waking services.** Render's free services sleep after 15 idle minutes and take about a minute to wake. `reviews` now waits up to `SERVICE_TIMEOUT` (90 s) for `ai` and `data` instead of the 5-second default, so the first import after a quiet period labels its rows instead of skipping them as "service unavailable". Tests: `test_slow_ai_is_waited_for_instead_of_skipping_the_row` (an `ai` answering after 5.5 s; it fails on the old code) and `test_every_call_to_ai_and_data_waits_for_a_waking_service`.
+- **Real `reviews` → `data` → PostgreSQL.** Maitha's pipeline tests in `tests/test_database.py` (#8) run this service against the real `data` service and PostgreSQL in CI: import, filters, counts over 100 reviews, identical reimport, conflicting IDs, file limits, and `ai`/database failures.
+- **Live, 15 Nov 2026, through https://lab9-movie-reviews.onrender.com:**
+  - 12:32 Asia/Dubai: a fresh 7-row CSV for *The Tin Kite* and *Glass Harbour* (IDs `gk-1115-01` to `gk-1115-07`, last row with a blank review) saved 6 reviews with model `nb-v2-6aa22689257b`. Counts: *The Tin Kite* 1 positive / 1 neutral / 1 negative, *Glass Harbour* 2 / 0 / 1. The negative filter for *The Tin Kite* returns only `gk-1115-03`.
+  - 13:00 Asia/Dubai: reimporting the same file → `0 added, 6 duplicates, 1 skipped` ("review_text is blank"); both movies' counts unchanged.
+  - Aishah's separate run (12:51, *Silver Harbor* and *Lantern Fields*) is recorded in `SUBMISSION.md`.
+- **Release configuration.** `render.yaml` now has the `lab9-reviews` entry (Dockerfile, `/healthz`, `AI_URL`, `DATA_URL`).
