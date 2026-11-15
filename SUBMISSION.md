@@ -3,7 +3,7 @@
 - Team: team-01 (Ghaith / GateKG, Aishah / amamsy90, Maitha / maitha22)
 - Public HTTPS URL: https://lab9-movie-reviews.onrender.com
 - GitHub repository URL: https://github.com/amamsy90/lab9-movie-reviews
-- Full deployed commit SHA (record after the final merge): current `main` is `a0aebf50b00bf5d427732682a383fa40c946cbb9`, the merge of pull request #10. This is not the final deployed SHA. Replace it after pull requests #9 and #11 are merged and all four services are redeployed from that commit. The 15 November live check ran on the services already deployed before these later merges.
+- Full deployed commit SHA (record after the final merge): `a1e06d1b736a238fae15475bbc7aef68d341d227`, the merge of pull request #11 and the last code change on `main`. All four services (`web`, `reviews`, `ai`, `data`) are deployed on Render from this commit. Later commits change documentation only.
 - Checking window: not announced in the repository. Confirm the dates with the instructor. The free Render database expires on 8 December 2026, so it has to stay available through that window.
 
 | Component | Owner | Evidence | Implementation PR | Integration/release PR | Review links |
