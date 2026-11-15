@@ -38,7 +38,9 @@ Environment: `REVIEWS_URL` (default `http://reviews:8000`), `DATA_URL` (default 
 
 ## Deployed service check (time and result)
 
-Local Docker, 8 Nov 2026: all five containers healthy; `GET /` serves the review board; `tools/smoke.py --url http://127.0.0.1:8080` → PASS. `/api/counts` returned `404 Not found` because the `data` review routes are not merged yet. Public deployment pending.
+Local Docker, 8 Nov 2026: all five containers healthy; `GET /` serves the review board; `tools/smoke.py --url http://127.0.0.1:8080` → PASS. `/api/counts` returned `404 Not found` because the `data` review routes were not merged yet.
+
+Public Render website, 15 November 2026: https://lab9-movie-reviews.onrender.com. `GET /healthz` returned `{"service": "web", "status": "ok"}`. `GET /api/movies` returned the saved titles, including *The Demo Film*, *Silver Harbor*, and *Lantern Fields*. There is no separate W2 pull request.
 
 ## Browser workflow and public HTTPS check
 
@@ -50,4 +52,4 @@ Local browser check, 8 Nov 2026 (real `web` and `reviews`, stand-ins for `ai` an
 4. The `<script>` review was shown as plain text and did not run.
 5. A 25-row file → "The file has 25 review rows; the limit is 20." shown as an error, and nothing was imported.
 
-Public HTTPS check pending deployment (W2).
+Public HTTPS check, 15 November 2026, by Aishah, on https://lab9-movie-reviews.onrender.com. A fresh five-row CSV for *Silver Harbor* and *Lantern Fields* returned 5 added, 0 duplicates, 0 skipped. The negative filter for *Silver Harbor* returned only `exam-harbor-3`. Counts were 1 positive, 1 neutral, and 1 negative. Reimporting the same file returned 0 added and 5 duplicates, and the counts stayed the same. A separate W2 pull request was not opened.

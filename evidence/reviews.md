@@ -68,7 +68,9 @@ Environment: `AI_URL` (default `http://ai:8000`), `DATA_URL` (default `http://da
 
 ## Deployed service check (time and result)
 
-Local Docker, 8 Nov 2026: all five containers healthy (`ai`, `data`, `db`, `reviews`, `web`). Public deployment pending.
+Local Docker, 8 Nov 2026: all five containers healthy (`ai`, `data`, `db`, `reviews`, `web`).
+
+Public Render service, 15 November 2026: https://lab9-reviews.onrender.com. `GET /healthz` returned `{"service": "reviews", "status": "ok"}`. There is no separate I2 pull request.
 
 ## Processing and real ML/storage API checks
 
@@ -79,4 +81,6 @@ Local Docker, 8 Nov 2026, from inside the `reviews` container:
 - Real `data` calls → `404 Not found`: the review routes are not built yet. The import reported the row as skipped with that reason instead of failing.
 - `tools/smoke.py` baseline → PASS
 
-I2: `reviews` now calls the `data` routes agreed in `API_CONTRACT.md` (`GET /reviews/by-external-id/{review_id}`, `POST /reviews`, `GET /reviews?movie_title=...&all=true`). Tests: 36 OK (8 skipped for PostgreSQL), including review IDs with spaces and slashes. The full import → counts check against the real `data` service runs once its routes are merged.
+I2 was not opened as its own pull request. The service does call the `data` routes agreed in `API_CONTRACT.md` (`GET /reviews/by-external-id/{review_id}`, `POST /reviews`, `GET /reviews?movie_title=...&all=true`).
+
+Live check, 15 November 2026, through the public website: five new reviews were added and then reported as duplicates on reimport. Saved sentiments used the trained model `nb-v2-6aa22689257b`, not the starter model. *Silver Harbor* counts stayed 1 positive, 1 neutral, 1 negative after the reimport. The 8 November local note above, including starter model `nb-v1-ffcd63596016` and `404` from `data`, describes that earlier container run only.

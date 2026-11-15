@@ -232,9 +232,12 @@ browser refresh, a live write/reimport check, or the final deployed main SHA.
   D2 does not independently alter these application settings.
 - Coordinate updating the API configuration table for `DB_SSLMODE` with its
   owner; this D2 change documents it here without editing teammates' files.
-- Confirm the Data deployment source has moved from `fix/render-db-ssl` to main
-  and record the final deployed main SHA and examiner workflow in submission
-  evidence. The cited teammate report says that switch was still needed.
+- The Data deployment source was moved from `fix/render-db-ssl` to `main` on
+  15 November 2026. Render redeployed commit `e6f2e14618460ed97627797040d473aae5c767ba`
+  after the branch change, and `GET /healthz` returned ok. The examiner workflow
+  and repository SHA are recorded in `SUBMISSION.md`. `main` then moved to
+  `d22ff576d1af93017981ca14aaac8ec67c6d9ad0` when this evidence was merged; that
+  commit does not change the running service code.
 
 No production credentials or databases were accessed. No normal Compose
 containers or existing Docker volumes were changed. The SQL backup is excluded
