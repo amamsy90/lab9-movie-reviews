@@ -19,6 +19,10 @@ COLUMNS = ("review_id", "movie_title", "review_text")
 # The same limits as data (and ai's 1000-character text limit), API_CONTRACT.md.
 LIMITS = {"review_id": 100, "movie_title": 200, "review_text": 1000}
 UNAVAILABLE = "service unavailable"
+# Render's free services sleep after 15 idle minutes and take about a minute to
+# wake up. Wait long enough for a sleeping ai or data service to answer instead
+# of skipping the row after request_json's 5-second default.
+SERVICE_TIMEOUT = float(os.environ.get("SERVICE_TIMEOUT", "90"))
 
 
 # --- Connection points --------------------------------------------------------
@@ -27,7 +31,7 @@ UNAVAILABLE = "service unavailable"
 
 def classify(text):
     """ai: POST /predict {"text"} -> {"category", "model_version"}."""
-    result = request_json(f"{AI_URL}/predict", {"text": text})
+    result = request_json(f"{AI_URL}/predict", {"text": text}, timeout=SERVICE_TIMEOUT)
     sentiment = result.get("category") if isinstance(result, dict) else None
     version = result.get("model_version") if isinstance(result, dict) else None
     if sentiment not in CATEGORIES or not isinstance(version, str) or not version:
@@ -38,7 +42,8 @@ def classify(text):
 def find_review(review_id):
     """data: GET /reviews/by-external-id/{review_id} -> the review, or None on 404."""
     try:
-        review = request_json(f"{DATA_URL}/reviews/by-external-id/{quote(review_id, safe='')}")
+        review = request_json(f"{DATA_URL}/reviews/by-external-id/{quote(review_id, safe='')}",
+                              timeout=SERVICE_TIMEOUT)
     except APIError as error:
         if error.status == 404:
             return None
@@ -50,12 +55,13 @@ def find_review(review_id):
 
 def save_review(review):
     """data: POST /reviews -> 201 saved review; 409 means the review_id is taken."""
-    return request_json(f"{DATA_URL}/reviews", review)
+    return request_json(f"{DATA_URL}/reviews", review, timeout=SERVICE_TIMEOUT)
 
 
 def movie_reviews(movie_title):
     """data: GET /reviews?movie_title=...&all=true -> every review for one movie."""
-    rows = request_json(f"{DATA_URL}/reviews?{urlencode({'movie_title': movie_title, 'all': 'true'})}")
+    rows = request_json(f"{DATA_URL}/reviews?{urlencode({'movie_title': movie_title, 'all': 'true'})}",
+                        timeout=SERVICE_TIMEOUT)
     if not isinstance(rows, list):
         raise APIError(502, "The data service returned an invalid response.")
     return rows
