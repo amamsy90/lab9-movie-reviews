@@ -1,6 +1,6 @@
 # Website microservice: evidence
 
-Owner: @gatekg. Checkpoint W1 (implementation). Code: `services/web/app.py`, `services/web/index.html`. Tests: `tests/test_web.py`.
+Owner: @gatekg. W1 is the implementation. W2 is this release: `render.yaml` service `lab9-movie-reviews`, free plan, health check `/healthz`, and the public HTTPS check below. Code: `services/web/app.py`, `services/web/index.html`. Tests: `tests/test_web.py`.
 
 ## API documentation and request/response examples
 
@@ -36,9 +36,13 @@ docker compose ps
 
 Environment: `REVIEWS_URL` (default `http://reviews:8000`), `DATA_URL` (default `http://data:8000`), `AI_URL` (default `http://ai:8000`, starter tickets only), `PORT` (default `8000`). Compose publishes the site on `${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}`.
 
+Render release file: `render.yaml` service `lab9-movie-reviews`, Dockerfile `services/web/Dockerfile`, build context `.`, health check `/healthz`, plan `free`, region Oregon. `DATA_URL`, `AI_URL`, and `REVIEWS_URL` are host settings. The file does not contain their values or a database password. The live values are the public origins `https://lab9-data.onrender.com`, `https://lab9-ai.onrender.com`, and `https://lab9-reviews.onrender.com`.
+
 ## Deployed service check (time and result)
 
-Local Docker, 8 Nov 2026: all five containers healthy; `GET /` serves the review board; `tools/smoke.py --url http://127.0.0.1:8080` → PASS. `/api/counts` returned `404 Not found` because the `data` review routes are not merged yet. Public deployment pending.
+Local Docker, 8 Nov 2026: all five containers healthy; `GET /` serves the review board; `tools/smoke.py --url http://127.0.0.1:8080` → PASS. `/api/counts` returned `404 Not found` because the `data` review routes were not merged yet.
+
+Public Render website, 15 November 2026: https://lab9-movie-reviews.onrender.com. `GET /healthz` returned `{"service": "web", "status": "ok"}`. `GET /api/movies` returned the saved titles, including *The Demo Film*, *Silver Harbor*, and *Lantern Fields*.
 
 ## Browser workflow and public HTTPS check
 
@@ -50,4 +54,4 @@ Local browser check, 8 Nov 2026 (real `web` and `reviews`, stand-ins for `ai` an
 4. The `<script>` review was shown as plain text and did not run.
 5. A 25-row file → "The file has 25 review rows; the limit is 20." shown as an error, and nothing was imported.
 
-Public HTTPS check pending deployment (W2).
+W2 public HTTPS check, 15 November 2026, on https://lab9-movie-reviews.onrender.com. A fresh five-row CSV for *Silver Harbor* and *Lantern Fields* returned 5 added, 0 duplicates, 0 skipped. The negative filter for *Silver Harbor* returned only `exam-harbor-3`. Counts were 1 positive, 1 neutral, and 1 negative. Reimporting the same file returned 0 added and 5 duplicates, and the counts stayed the same. Ghaith is opening the reviews release (I2) separately.

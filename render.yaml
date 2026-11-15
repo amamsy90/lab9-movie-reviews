@@ -1,5 +1,5 @@
-# Release config for the ai service. It does not use PostgreSQL.
-# Other owners can add their services here.
+# Release config. Service URLs are set in the host dashboard, not in this file.
+# The web service does not receive database credentials.
 services:
   - type: web
     name: lab9-ai
@@ -7,3 +7,18 @@ services:
     dockerfilePath: ./services/ai/Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
+  - type: web
+    name: lab9-movie-reviews
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./services/web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATA_URL
+        sync: false
+      - key: AI_URL
+        sync: false
+      - key: REVIEWS_URL
+        sync: false
