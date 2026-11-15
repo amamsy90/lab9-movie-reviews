@@ -8,7 +8,7 @@
 
 | Component | Owner | Evidence | Implementation PR | Integration/release PR | Review links |
 | --- | --- | --- | --- | --- | --- |
-| W: `web` | Ghaith | [web](evidence/web.md) | https://github.com/amamsy90/lab9-movie-reviews/pull/4 | https://github.com/amamsy90/lab9-movie-reviews/pull/11 (open, not merged) | https://github.com/amamsy90/lab9-movie-reviews/pull/4#pullrequestreview-5817327026 |
+| W: `web` | Ghaith | [web](evidence/web.md) | https://github.com/amamsy90/lab9-movie-reviews/pull/4 | https://github.com/amamsy90/lab9-movie-reviews/pull/11 | https://github.com/amamsy90/lab9-movie-reviews/pull/4#pullrequestreview-5817327026 |
 | I: `reviews` | Ghaith | [reviews](evidence/reviews.md) | https://github.com/amamsy90/lab9-movie-reviews/pull/2 | https://github.com/amamsy90/lab9-movie-reviews/pull/10 | https://github.com/amamsy90/lab9-movie-reviews/pull/2#pullrequestreview-5817258978 and https://github.com/amamsy90/lab9-movie-reviews/pull/10#pullrequestreview-5909977036 |
 | A: `ai` | Aishah | [ai](evidence/ai.md) | https://github.com/amamsy90/lab9-movie-reviews/pull/3 | https://github.com/amamsy90/lab9-movie-reviews/pull/6 | https://github.com/amamsy90/lab9-movie-reviews/pull/3#pullrequestreview-5817206825 and https://github.com/amamsy90/lab9-movie-reviews/pull/6#pullrequestreview-5817350773 |
 | D: PostgreSQL + `data` | Maitha | [data](evidence/data.md) | https://github.com/amamsy90/lab9-movie-reviews/pull/5 | https://github.com/amamsy90/lab9-movie-reviews/pull/8 | https://github.com/amamsy90/lab9-movie-reviews/pull/5#pullrequestreview-5817385613 and https://github.com/amamsy90/lab9-movie-reviews/pull/8#pullrequestreview-5909911308 |
