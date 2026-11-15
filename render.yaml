@@ -1,5 +1,4 @@
-# Release config. Service URLs are set in the host dashboard, not in this file.
-# The web service does not receive database credentials.
+# Release config. These services do not receive database credentials.
 services:
   - type: web
     name: lab9-ai
@@ -7,6 +6,19 @@ services:
     dockerfilePath: ./services/ai/Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
+  # reviews: CSV import and per-movie counts. Calls ai and data over their URLs.
+  - type: web
+    name: lab9-reviews
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/reviews/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: AI_URL
+        value: https://lab9-ai.onrender.com
+      - key: DATA_URL
+        value: https://lab9-data.onrender.com
   - type: web
     name: lab9-movie-reviews
     runtime: docker

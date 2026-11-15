@@ -4,6 +4,7 @@ from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 import json
 import threading
+import time
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -125,6 +126,21 @@ class RuleTests(unittest.TestCase):
                 patch.object(reviews, "classify", return_value=("neutral", "test-v1")), \
                 patch.object(reviews, "save_review", side_effect=APIError(409, "Taken.")):
             self.assertEqual(reviews.store("r1", "Moon Garden", "Fine film"), "duplicate")
+
+
+    def test_every_call_to_ai_and_data_waits_for_a_waking_service(self):
+        review = {"external_id": "r1", "movie_title": "Moon Garden", "review_text": "Fine film"}
+        calls = [
+            (lambda: reviews.classify("Fine film"), {"category": "neutral", "model_version": "v"}),
+            (lambda: reviews.find_review("r1"), review),
+            (lambda: reviews.save_review(review), review),
+            (lambda: reviews.movie_reviews("Moon Garden"), []),
+        ]
+        for connection_point, reply in calls:
+            with self.subTest(reply=reply), patch.object(reviews, "request_json", return_value=reply) as fake:
+                connection_point()
+            self.assertEqual(fake.call_args.kwargs["timeout"], reviews.SERVICE_TIMEOUT)
+        self.assertGreaterEqual(reviews.SERVICE_TIMEOUT, 60)
 
 
 class ServiceTests(unittest.TestCase):
@@ -252,6 +268,20 @@ class ServiceTests(unittest.TestCase):
                              {"movie_title": "Unknown", "positive": 0, "neutral": 0, "negative": 0, "total": 0})
             self.assertEqual(call(url + "/counts?movie_title=%20%20"), (400, {"error": "Choose a movie."}))
             self.assertEqual(call(url + "/counts")[0], 400)
+
+    def test_slow_ai_is_waited_for_instead_of_skipping_the_row(self):
+        # A Render service waking from sleep answers after more than 5 seconds.
+        class SlowAI(FakeAI):
+            def route(self, method, path):
+                time.sleep(5.5)
+                return super().route(method, path)
+
+        raw = b"review_id,movie_title,review_text\nr1,Moon Garden,Wonderful acting\n"
+        with self.running(ai=SlowAI) as url:
+            status, result = call(url + "/imports", raw)
+        self.assertEqual(status, 200)
+        self.assertEqual((result["added"], result["skipped"]), (1, 0))
+        self.assertEqual(FakeData.rows[0]["sentiment"], "positive")
 
 
 if __name__ == "__main__":
