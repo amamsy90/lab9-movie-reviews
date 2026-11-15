@@ -34,7 +34,9 @@
 
 - Deployed service check (time and result):
 
-  Local container, 8 November 2026: `docker run -e PORT=9000 -p 8012:9000 lab9-ai`. `GET /healthz` returned `ok` with `model_version` `nb-v2-6aa22689257b`. `POST /predict` for the clear positive review returned `positive` with that version. A public URL still needs the team Render account; this service does not need the `data` database.
+  Local container, 8 November 2026: `docker run -e PORT=9000 -p 8012:9000 lab9-ai`. `GET /healthz` returned `ok` with `model_version` `nb-v2-6aa22689257b`. `POST /predict` for the clear positive review returned `positive` with that version.
+
+  Public Render service, 15 November 2026: https://lab9-ai.onrender.com. `GET /healthz` returned `{"service": "ai", "status": "ok", "model_version": "nb-v2-6aa22689257b"}`. The live website import stored that same version on new reviews. This service has no database settings. Release pull request: https://github.com/amamsy90/lab9-movie-reviews/pull/6.
 
 - Prepared or extended labeled data and held-out split:
 
