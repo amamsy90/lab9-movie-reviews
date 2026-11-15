@@ -41,7 +41,9 @@ def connect():
         dbname=os.environ.get("DB_NAME", "helpdesk"),
         user=os.environ.get("DB_USER", "helpdesk"),
         password=os.environ["DB_PASSWORD"],
-        connect_timeout=3,
+        connect_timeout=10,
+        # prefer uses SSL when the server offers it. Render's external database requires SSL.
+        sslmode=os.environ.get("DB_SSLMODE", "prefer"),
         options="-c statement_timeout=3000",
         row_factory=dict_row,
     )
