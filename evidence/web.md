@@ -1,6 +1,6 @@
 # Website microservice: evidence
 
-Owner: @gatekg. Checkpoint W1 (implementation). Code: `services/web/app.py`, `services/web/index.html`. Tests: `tests/test_web.py`.
+Owner: @gatekg. W1 is the implementation. W2 is this release: `render.yaml` service `lab9-movie-reviews`, free plan, health check `/healthz`, and the public HTTPS check below. Code: `services/web/app.py`, `services/web/index.html`. Tests: `tests/test_web.py`.
 
 ## API documentation and request/response examples
 
@@ -35,6 +35,8 @@ docker compose ps
 ```
 
 Environment: `REVIEWS_URL` (default `http://reviews:8000`), `DATA_URL` (default `http://data:8000`), `AI_URL` (default `http://ai:8000`, starter tickets only), `PORT` (default `8000`). Compose publishes the site on `${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}`.
+
+Render release file: `render.yaml` service `lab9-movie-reviews`, Dockerfile `services/web/Dockerfile`, build context `.`, health check `/healthz`, plan `free`, region Oregon. `DATA_URL`, `AI_URL`, and `REVIEWS_URL` are host settings. The file does not contain their values or a database password. The live values are the public origins `https://lab9-data.onrender.com`, `https://lab9-ai.onrender.com`, and `https://lab9-reviews.onrender.com`.
 
 ## Deployed service check (time and result)
 
